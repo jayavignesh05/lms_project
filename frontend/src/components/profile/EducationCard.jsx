@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const EducationCard = ({ educationData, onDataChange }) => {
+const EducationCard = ({ educationData, onDataChange, onEditStart, onEditEnd }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localFormData, setLocalFormData] = useState([]);
   const [dropdownData, setDropdownData] = useState({
@@ -27,6 +27,7 @@ const EducationCard = ({ educationData, onDataChange }) => {
     await fetchDropdowns();
     setLocalFormData(JSON.parse(JSON.stringify(educationData)));
     setIsEditing(true);
+    if (onEditStart) onEditStart();
   };
 
   const handleAddEducation = () => {
@@ -117,10 +118,16 @@ const EducationCard = ({ educationData, onDataChange }) => {
 
       toast.success("Education updated!");
       setIsEditing(false);
+      if (onEditEnd) onEditEnd();
       if (onDataChange) onDataChange();
     } catch (e) {
       toast.error("Update failed");
     }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (onEditEnd) onEditEnd();
   };
 
   return (
@@ -204,10 +211,7 @@ const EducationCard = ({ educationData, onDataChange }) => {
               <button onClick={handleSave} className="save-btn">
                 <MdCheck />
               </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="cancel-btn"
-              >
+              <button onClick={handleCancel} className="cancel-btn">
                 <MdClear />
               </button>
             </div>

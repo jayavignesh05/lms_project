@@ -510,6 +510,77 @@ const getProfilePic = async (req, res) => {
   }
 };
 
+// --- 1. GET USER SKILLS ---
+const getUserSkills = async (req, res) => {
+  const userId = req.userId;
+  try {
+    const sql = `
+      SELECT s.name 
+      FROM user_skills us
+      JOIN skills s ON us.skill_id = s.id
+      WHERE us.user_id = ?
+    `;
+    const [results] = await promisePool.query(sql, [userId]);
+    
+    // நாம் பெயர்களை மட்டும் Array-ஆக அனுப்புகிறோம் (['React', 'Java'])
+    const skillsList = results.map(row => row.name);
+    res.status(200).json(skillsList);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch skills" });
+  }
+};
+
+// --- 2. UPDATE USER SKILLS ---
+const updateUserSkills = async (req, res) => {
+  const userId = req.userId;
+  const { skills } = req.body; // Frontend-ல் இருந்து வருவது: ["React", "NewSkill"]
+
+  if (!Array.isArray(skills)) {
+    return res.status(400).json({ error: "Skills must be an array" });
+  }
+
+  const connection = await promisePool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. பழைய Skills-ஐ அழிக்கிறோம் (Delete old mappings for this user)
+    await connection.query("DELETE FROM user_skills WHERE user_id = ?", [userId]);
+
+    // 2. ஒவ்வொரு Skill-ஐயும் செக் செய்கிறோம்
+    for (const skillName of skills) {
+      let skillId;
+      
+      // Skill ஏற்கனவே இருக்கிறதா?
+      const [existing] = await connection.query("SELECT id FROM skills WHERE name = ?", [skillName]);
+      
+      if (existing.length > 0) {
+        skillId = existing[0].id;
+      } else {
+        // இல்லை என்றால் புதுசாக உருவாக்குகிறோம்
+        const [inserted] = await connection.query("INSERT INTO skills (name) VALUES (?)", [skillName]);
+        skillId = inserted.insertId;
+      }
+
+      // 3. User உடன் Connect செய்கிறோம்
+      await connection.query("INSERT INTO user_skills (user_id, skill_id) VALUES (?, ?)", [userId, skillId]);
+    }
+
+    await connection.commit();
+    res.status(200).json({ message: "Skills updated successfully" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Skills Update Error:", error);
+    res.status(500).json({ error: "Database failed during skills update" });
+  } finally {
+    connection.release();
+  }
+};
+
+// --- Routes-ல் இதை Add பண்ணுங்க ---
+router.post("/getskills", verifyToken, getUserSkills);
+router.put("/updateskills", verifyToken, updateUserSkills);
+
 router.post("/show", verifyToken, showProfile);
 router.put("/update", verifyToken, updateProfile);
 router.post("/create", insertProfile);

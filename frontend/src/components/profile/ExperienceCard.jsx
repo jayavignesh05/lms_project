@@ -6,7 +6,12 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
+const ExperienceCard = ({
+  experienceData,
+  onDataChange,
+  onEditStart,
+  onEditEnd,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localFormData, setLocalFormData] = useState([]);
   const [dropdownData, setDropdownData] = useState({
@@ -27,6 +32,7 @@ const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
     await fetchDropdowns();
     setLocalFormData(JSON.parse(JSON.stringify(experienceData)));
     setIsEditing(true);
+    if (onEditStart) onEditStart();
   };
 
   const handleAddExperience = () => {
@@ -73,7 +79,6 @@ const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
   const handleSave = async () => {
     const token = localStorage.getItem("token");
     try {
-      // Create New Company/Designation if needed (Optional logic if backend requires IDs)
       const preparedData = await Promise.all(
         localFormData.map(async (exp) => {
           let { company_id, designation_id } = exp;
@@ -112,10 +117,16 @@ const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
       }
       toast.success("Experience updated!");
       setIsEditing(false);
+      if (onEditEnd) onEditEnd();
       if (onDataChange) onDataChange();
     } catch (e) {
       toast.error("Update failed");
     }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (onEditEnd) onEditEnd();
   };
 
   return (
@@ -128,7 +139,6 @@ const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
           <div ref={containerRef}>
             {localFormData.map((exp, index) => (
               <div key={index} className="address-form-group">
-                {/* Inputs for Designation, Company, Location, Dates */}
                 <div className="form-rows">
                   <div className="form-group">
                     <label>Designation</label>
@@ -214,10 +224,7 @@ const ExperienceCard = ({ experienceData, onDataChange, formatDate }) => {
               <button onClick={handleSave} className="save-btn">
                 <MdCheck />
               </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="cancel-btn"
-              >
+              <button onClick={handleCancel} className="cancel-btn">
                 <MdClear />
               </button>
             </div>

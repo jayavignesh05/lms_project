@@ -8,7 +8,13 @@ import axios from "axios";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 
-const PersonalInfoCard = ({ profileData, onDataChange, formatDate }) => {
+const PersonalInfoCard = ({
+  profileData,
+  onDataChange,
+  formatDate,
+  onEditStart,
+  onEditEnd,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [dropdowns, setDropdowns] = useState({
@@ -56,13 +62,14 @@ const PersonalInfoCard = ({ profileData, onDataChange, formatDate }) => {
       ...profileData,
       email_id: profileData.email,
       date_of_birth: dob,
-      addresses: profileData.addresses.map((addr) => ({ ...addr })), // Deep copy
+      addresses: profileData.addresses.map((addr) => ({ ...addr })),
     });
 
     if (profileData.addresses?.length > 0) {
       fetchStates(profileData.addresses[0].countries_id);
     }
     setIsEditing(true);
+    if (onEditStart) onEditStart();
   };
 
   const handleAddAddress = () => {
@@ -100,11 +107,18 @@ const PersonalInfoCard = ({ profileData, onDataChange, formatDate }) => {
       });
       toast.success("Personal info updated!");
       setIsEditing(false);
+      if (onEditEnd) onEditEnd();
       if (onDataChange) onDataChange();
     } catch (e) {
       toast.error("Update failed");
     }
   };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (onEditEnd) onEditEnd();
+  };
+
 
   return (
     <div
@@ -247,10 +261,7 @@ const PersonalInfoCard = ({ profileData, onDataChange, formatDate }) => {
               <button onClick={handleSave} className="save-btn">
                 <MdCheck />
               </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="cancel-btn"
-              >
+              <button onClick={handleCancel} className="cancel-btn">
                 <MdClear />
               </button>
             </div>

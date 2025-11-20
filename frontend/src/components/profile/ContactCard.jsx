@@ -6,24 +6,19 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import dayjs from "dayjs"; 
 
-const ContactCard = ({ profileData, onDataChange }) => {
+const ContactCard = ({ profileData, onDataChange,onEditStart, onEditEnd }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
 
  const handleEditClick = () => {
     setFormData({
-    
       email_id: profileData.email || "",
       contact_no: profileData.contact_no || "",
       linkedin_url: profileData.linkedin_url || "", 
-
-      
       first_name: profileData.first_name || "",
       last_name: profileData.last_name || "",
       gender_id: profileData.gender_id || "",
       current_status_id: profileData.current_status_id || "",
-      
-      
       date_of_birth: profileData.date_of_birth 
         ? dayjs(profileData.date_of_birth).format("YYYY-MM-DD") 
         : null,
@@ -32,11 +27,13 @@ const ContactCard = ({ profileData, onDataChange }) => {
     });
     
     setIsEditing(true);
+    if (onEditStart) onEditStart();
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setFormData({});
+    if (onEditEnd) onEditEnd();
   };
 
   const handleInputChange = (e) => {
@@ -54,10 +51,12 @@ const ContactCard = ({ profileData, onDataChange }) => {
       toast.success("Contact details updated!");
       setIsEditing(false);
       if (onDataChange) onDataChange();
+if (onEditEnd) onEditEnd();
     } catch (err) {
       console.error("Update Error:", err.response?.data);
       toast.error("Failed to update contact.");
     }
+    
   };
 
   return (
@@ -114,7 +113,7 @@ const ContactCard = ({ profileData, onDataChange }) => {
           </div>
           {profileData.linkedin_url && (
              <div className="contact-item">
-               <FaLinkedin style={{ color: "#0077b5" }} />
+               <FaLinkedin />
                <a 
                  href={profileData.linkedin_url} 
                  target="_blank" 

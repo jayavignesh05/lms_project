@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { MdOutlineEdit, MdCheck, MdClear } from "react-icons/md";
 import axios from "axios";
 import { toast } from "react-toastify";
-import dayjs from "dayjs"; // <--- IMPORTANT: Import dayjs for date formatting
+import dayjs from "dayjs";
 
-const HeaderCard = ({ profileData, onDataChange }) => {
+const HeaderCard = ({ profileData, onDataChange, onEditStart, onEditEnd }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [statuses, setStatuses] = useState([]);
@@ -23,19 +23,15 @@ const HeaderCard = ({ profileData, onDataChange }) => {
   const handleEditClick = async () => {
     await fetchDropdowns();
 
-    // --- THE FIX IS HERE ---
-    // We must pre-fill formData with ALL existing data, not just name/status.
     setFormData({
-      // Fields managed by this card
       first_name: profileData.first_name,
       last_name: profileData.last_name,
       current_status_id: profileData.current_status_id,
+            linkedin_url: profileData.linkedin_url, 
 
-      // --- HIDDEN FIELDS (Required by Backend to avoid NULL errors) ---
-      email_id: profileData.email, // Backend expects 'email_id'
+      email_id: profileData.email,
       contact_no: profileData.contact_no,
       gender_id: profileData.gender_id,
-      // Format date correctly for MySQL (YYYY-MM-DD) or send null
       date_of_birth: profileData.date_of_birth
         ? dayjs(profileData.date_of_birth).format("YYYY-MM-DD")
         : null,
@@ -43,6 +39,7 @@ const HeaderCard = ({ profileData, onDataChange }) => {
     });
 
     setIsEditing(true);
+    if (onEditStart) onEditStart();
   };
 
   const handleSave = async () => {
@@ -54,9 +51,10 @@ const HeaderCard = ({ profileData, onDataChange }) => {
       });
       toast.success("Profile updated!");
       setIsEditing(false);
+      if (onEditEnd) onEditEnd();
       if (onDataChange) onDataChange();
     } catch (err) {
-      console.error("Update Error:", err.response?.data); // Log exact backend error
+      console.error("Update Error:", err.response?.data);
       toast.error("Failed to update.");
     }
   };
@@ -64,6 +62,12 @@ const HeaderCard = ({ profileData, onDataChange }) => {
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    if (onEditEnd) onEditEnd();
+  };
+
 
   return (
     <div className={`grid-card header-card ${isEditing ? "is-editing" : ""}`}>
@@ -110,10 +114,7 @@ const HeaderCard = ({ profileData, onDataChange }) => {
               <button onClick={handleSave} className="save-btn">
                 <MdCheck />
               </button>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="cancel-btn"
-              >
+              <button onClick={handleCancel} className="cancel-btn">
                 <MdClear />
               </button>
             </div>
