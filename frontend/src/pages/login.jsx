@@ -31,6 +31,12 @@ function Login() {
     setPassword("");
     setActiveTab(tab);
   };
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/home"); 
+    }
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

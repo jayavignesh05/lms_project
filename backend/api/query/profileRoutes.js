@@ -3,45 +3,27 @@ const router = express.Router();
 const promisePool = require("../../db");
 const verifyToken = require("../middleware/verifyToken");
 const jwt = require('jsonwebtoken');
-
 const showProfile = async (req, res) => {
   const userId = req.userId;
-
   try {
     const sql = `
       SELECT 
-          u.id AS user_id, u.first_name, u.last_name, u.email_id, u.contact_no, u.date_of_birth, u.current_status_id,
+          u.id AS user_id, u.first_name, u.last_name, u.email_id, u.contact_no, u.date_of_birth, u.current_status_id, u.linkedin_url,
           a.id AS address_id, a.address, a.door_no, 
           a.street, a.area, a.city, a.pincode, a.countries_id, a.state_id,
-          g.gender_name,
-        g.id AS gender_id,
-          
+          g.gender_name, g.id AS gender_id,
           cs.name AS current_status_name,
-        
-          c.name AS country_name,
-          s.name AS state_name
-      FROM 
-          users AS u
-      LEFT JOIN
-          gender AS g ON u.gender_id = g.id
-      LEFT JOIN
-          current_status AS cs ON u.current_status_id = cs.id
-      LEFT JOIN 
-          addresses AS a ON u.id = a.user_id
-      LEFT JOIN
-          countries AS c ON a.countries_id = c.id
-      LEFT JOIN
-          states AS s ON a.state_id = s.id
-
-      WHERE 
-          u.id = ?;
+          c.name AS country_name, s.name AS state_name
+      FROM users AS u
+      LEFT JOIN gender AS g ON u.gender_id = g.id
+      LEFT JOIN current_status AS cs ON u.current_status_id = cs.id
+      LEFT JOIN addresses AS a ON u.id = a.user_id
+      LEFT JOIN countries AS c ON a.countries_id = c.id
+      LEFT JOIN states AS s ON a.state_id = s.id
+      WHERE u.id = ?;
     `;
-
     const [results] = await promisePool.query(sql, [userId]);
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    if (results.length === 0) return res.status(404).json({ error: "User not found" });
 
     const userProfile = {
       user_id: results[0].user_id,
@@ -49,9 +31,9 @@ const showProfile = async (req, res) => {
       last_name: results[0].last_name,
       email: results[0].email_id,
       contact_no: results[0].contact_no,
+      linkedin_url: results[0].linkedin_url,
       gender: results[0].gender_name,
       gender_id: results[0].gender_id,
-
       date_of_birth: results[0].date_of_birth,
       current_status_id: results[0].current_status_id,
       current_status_name: results[0].current_status_name,
@@ -75,7 +57,6 @@ const showProfile = async (req, res) => {
         });
       }
     });
-
     res.status(200).json(userProfile);
   } catch (error) {
     res.status(500).json({ error: "Database query failed" });
@@ -89,6 +70,7 @@ const updateProfile = async (req, res) => {
     last_name,
     email_id,
     contact_no,
+    linkedin_url,
     gender_id,
     date_of_birth,
     current_status_id,
@@ -101,18 +83,20 @@ const updateProfile = async (req, res) => {
     await connection.beginTransaction();
 
     const userUpdateSql = `
-            UPDATE users 
-            SET first_name = ?, last_name = ?, email_id = ?, contact_no = ?, gender_id = ?, date_of_birth = ?, current_status_id = ?
-            WHERE id = ?;
-        `;
+        UPDATE users 
+        SET first_name = ?, last_name = ?, email_id = ?, contact_no = ?, linkedin_url = ?, gender_id = ?, date_of_birth = ?, current_status_id = ?
+        WHERE id = ?;
+    `;
+    
     await connection.query(userUpdateSql, [
       first_name,
       last_name,
       email_id,
       contact_no,
-      gender_id,
-      date_of_birth,
-      current_status_id,
+      linkedin_url || null,
+      gender_id || null,
+      date_of_birth || null,
+      current_status_id || null,
       userId,
     ]);
 
@@ -120,10 +104,10 @@ const updateProfile = async (req, res) => {
       for (const address of addresses) {
         if (address.address_id) {
           const addressUpdateSql = `
-                        UPDATE addresses 
-                        SET address = ?, door_no = ?, street = ?, area = ?, city = ?, pincode = ?, countries_id = ?, state_id = ?
-                        WHERE id = ? AND user_id = ?;
-                    `;
+                UPDATE addresses 
+                SET address = ?, door_no = ?, street = ?, area = ?, city = ?, pincode = ?, countries_id = ?, state_id = ?
+                WHERE id = ? AND user_id = ?;
+            `;
           await connection.query(addressUpdateSql, [
             address.label,
             address.door_no,
@@ -138,9 +122,9 @@ const updateProfile = async (req, res) => {
           ]);
         } else {
           const addressInsertSql = `
-                        INSERT INTO addresses (user_id, address, door_no, street, area, city, pincode, countries_id, state_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-                    `;
+                INSERT INTO addresses (user_id, address, door_no, street, area, city, pincode, countries_id, state_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            `;
           await connection.query(addressInsertSql, [
             userId,
             address.label,
@@ -157,14 +141,11 @@ const updateProfile = async (req, res) => {
     }
 
     await connection.commit();
-    res
-      .status(200)
-      .json({ message: "Profile and addresses updated successfully." });
+    res.status(200).json({ message: "Profile and addresses updated successfully." });
   } catch (error) {
     await connection.rollback();
-    res
-      .status(500)
-      .json({ error: "Database query failed during profile update." });
+    console.error("Update Profile Error:", error);
+    res.status(500).json({ error: "Database query failed during profile update." });
   } finally {
     connection.release();
   }
@@ -176,6 +157,7 @@ const insertProfile = async (req, res) => {
     last_name,
     email_id,
     contact_no,
+    linkedin_url,
     gender_id,
     date_of_birth,
     current_status_id,
@@ -184,9 +166,7 @@ const insertProfile = async (req, res) => {
   } = req.body;
 
   if (!first_name || !last_name || !email_id || !password || !contact_no) {
-    return res
-      .status(400)
-      .json({ message: "Required user fields are missing." });
+    return res.status(400).json({ message: "Required user fields are missing." });
   }
 
   const connection = await promisePool.getConnection();
@@ -196,16 +176,19 @@ const insertProfile = async (req, res) => {
 
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
     const userInsertSql =
-      "INSERT INTO users (first_name, last_name, email_id, contact_no, gender_id, date_of_birth, current_status_id, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+      "INSERT INTO users (first_name, last_name, email_id, contact_no, linkedin_url, gender_id, date_of_birth, current_status_id, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
     const [userResult] = await connection.query(userInsertSql, [
       first_name,
       last_name,
       email_id,
       contact_no,
-      gender_id,
-      date_of_birth,
-      current_status_id,
+      linkedin_url || null,
+      gender_id || null,
+      date_of_birth || null,
+      current_status_id || null,
       hashedPassword,
     ]);
     const newUserId = userResult.insertId;
@@ -231,14 +214,11 @@ const insertProfile = async (req, res) => {
     }
 
     await connection.commit();
-    res
-      .status(201)
-      .json({ message: "Profile created successfully.", userId: newUserId });
+    res.status(201).json({ message: "Profile created successfully.", userId: newUserId });
   } catch (error) {
     await connection.rollback();
-    res
-      .status(500)
-      .json({ error: "Database query failed during profile creation." });
+    console.error("Profile insert transaction error:", error);
+    res.status(500).json({ error: "Database query failed during profile creation." });
   } finally {
     connection.release();
   }
@@ -289,7 +269,6 @@ const insertEducation = async (req, res) => {
     location_id,
   } = req.body;
 
-  // Frontend sends degree name as 'name'
   const degree_name = req.body.name;
 
   if (!degree_id || !graduation_date) {
