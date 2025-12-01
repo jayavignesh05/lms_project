@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import "./login.css";
+import "./style.css";
 import loginImage from "../assets/loginimage.jpg";
 import caddCentreLogo from "../assets/caddcentre.png";
 import { ToastContainer, toast } from "react-toastify";
