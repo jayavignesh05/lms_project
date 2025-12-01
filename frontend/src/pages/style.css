@@ -26,6 +26,17 @@
   backdrop-filter: blur(1px) !important;
 }
 
+/* --- MAIN SPLIT CARD --- */
+.split-card {
+  z-index: 2;
+  position: relative;
+  display: flex;
+  width: 900px;
+  max-width: 95%;
+  height: 550px;
+  overflow: hidden;
+}
+
 /* --- LEFT SIDEBAR (Logo & Nav) --- */
 .card-sidebar {
   width: 35%; /* Takes 35% of width */
