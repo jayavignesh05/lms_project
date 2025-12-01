@@ -115,7 +115,18 @@ function Login() {
       <ToastContainer position="top-right" theme="light" />
 
       {/* --- SPLIT CARD LAYOUT --- */}
-      <div className="split-card">
+      <div
+        className="split-card"
+        style={{
+          background: "rgba(255, 255, 255, 0.1)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.3)",
+          boxShadow: "0 15px 35px rgba(0, 0, 0, 0.2)",
+          zIndex: 2,
+          position: "relative",
+        }}
+      >
         {/* LEFT SIDEBAR */}
         <div className="card-sidebar">
           <img src={caddCentreLogo} alt="Logo" className="sidebar-logo" />
