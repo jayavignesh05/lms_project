@@ -9,6 +9,8 @@ const SkillsCard = ({ onDataChange, onEditStart, onEditEnd }) => {
   const [skills, setSkills] = useState([]);
   const [newSkill, setNewSkill] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Ensure this API URL is correct
   const base_api = "https://student-leaning.onrender.com/api";
 
   const fetchSkills = async () => {
@@ -33,17 +35,20 @@ const SkillsCard = ({ onDataChange, onEditStart, onEditEnd }) => {
 
   const handleCancel = () => {
     setIsEditing(false);
-    fetchSkills();
+    fetchSkills(); // Revert back to original
+    setNewSkill(""); 
     if (onEditEnd) onEditEnd();
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && newSkill.trim() !== "") {
       e.preventDefault();
-      if (!skills.includes(newSkill.trim())) {
-        setSkills([...skills, newSkill.trim()]);
+      const skillToAdd = newSkill.trim();
+      
+      if (!skills.includes(skillToAdd)) {
+        setSkills((prev) => [...prev, skillToAdd]);
       }
-      setNewSkill("");
+      setNewSkill(""); 
     }
   };
 
@@ -51,16 +56,42 @@ const SkillsCard = ({ onDataChange, onEditStart, onEditEnd }) => {
     setSkills(skills.filter((skill) => skill !== skillToRemove));
   };
 
+  // --- UPDATED SAVE FUNCTION ---
   const handleSave = async () => {
     const token = localStorage.getItem("token");
     setLoading(true);
+    
     try {
-      await axios.put(`${base_api}/profile/updateskills`, { skills, token });
+      // 1. Create a copy of current skills
+      let finalSkills = [...skills];
+
+      // 2. Check if there is text in the input box that hasn't been added yet
+      if (newSkill.trim() !== "") {
+        const pendingSkill = newSkill.trim();
+        // Avoid duplicates
+        if (!finalSkills.includes(pendingSkill)) {
+          finalSkills.push(pendingSkill);
+        }
+      }
+
+      // 3. Send the FINAL list (Existing + Pending Input)
+      await axios.put(`${base_api}/profile/updateskills`, { skills: finalSkills, token });
+      
       toast.success("Skills updated!");
+      
+      // 4. Update UI state immediately
+      setSkills(finalSkills);
+      setNewSkill(""); // Clear the input box
       setIsEditing(false);
+      
+      // 5. Background Refresh
+      fetchSkills(); 
+      
       if (onDataChange) onDataChange();
       if (onEditEnd) onEditEnd();
+      
     } catch (err) {
+      console.error(err);
       toast.error("Failed to update skills.");
     } finally {
       setLoading(false);
@@ -71,7 +102,7 @@ const SkillsCard = ({ onDataChange, onEditStart, onEditEnd }) => {
     <div className={`grid-card skills-card ${isEditing ? "is-editing" : ""}`}>
       <div className="skills-header">
         <h3>Skills</h3>
-        {/* INPUT FIELD MOVED HERE (Above Skills List) */}
+        
         {isEditing && (
             <div className="skill-input-wrapper">
             <input
@@ -88,7 +119,7 @@ const SkillsCard = ({ onDataChange, onEditStart, onEditEnd }) => {
       </div>
 
       <div className="skills-container">
-        {skills.length > 0 ? (
+        {skills && skills.length > 0 ? (
           skills.map((skill, index) => (
             <span key={index} className="skill-badge">
               {skill}
